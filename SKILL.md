@@ -9,7 +9,7 @@ description_zh: "SkillHub 技能商店的搜索、安全安装与一键发布"
 description_en: "Search, safely install, and publish skills on SkillHub"
 summary: "SkillHub 技能商店的搜索 / 安全安装 / 一键发布与线上状态复核"
 category: dev-programming
-version: 2.1.0
+version: 2.2.0
 author: 刘玉明
 tags: [skillhub, 技能商店, 搜索技能, 安装技能, 技能发布, 技能更新, 技能发版, 发布预检]
 trigger:
@@ -147,12 +147,20 @@ python $S/skillhub_publish.py fix   <技能目录>    # 补平台字段（幂等
 python $S/skillhub_publish.py bump  <技能目录>    # 版本递增
 python $S/skillhub_publish.py status <slug> [--expect X.Y.Z]
 python $S/skillhub_publish.py release <技能目录> --changelog "..."
+
+# ── 批量上架（一次推一批：发布 + 同步 GitHub + 双项校验）──
+python $S/batch_release.py ym-foo ym-bar --gap 40          # 指定技能
+python $S/batch_release.py --from-list list.txt            # 从清单读
+python $S/batch_release.py ym-foo --stage github           # 只补推 GitHub
+python $S/batch_release.py ym-foo ym-bar --dry-run         # 先看计划
 ```
 
 ## 目录说明
 
 - `scripts/skillhub_publish.py` —— 发布全部逻辑（frontmatter 行级读写、CLI 调用、状态查询）
 - `scripts/check_slug.py` —— 批量自查 slug 占用
+- `scripts/batch_release.py` —— **批量上架**：发布（固定间隔防限流）+ 建仓推 GitHub + 双项校验，
+  退出码 `0` 全成功 / `1` 有失败 / `2` 参数错。命令幂等，重跑失败项即可。
 - `references/search-install.md` —— 搜索、安全审查清单、命名空间拍平、安装后配置
 - `references/platform-fields.md` —— 平台字段规范、13 个分类枚举、解析器怪癖、文件白名单
 - `references/troubleshooting.md` —— 按症状排错：发布 ≠ 上线、分类改不了、slug 占用、环境坑
@@ -238,6 +246,12 @@ python $S/skillhub_publish.py release <技能目录> --changelog "..."
   `python ~/.workbuddy/tools/push_via_api.py <仓库目录>`（**验证只看 tree sha**）。
 
 ## 版本历史
+
+### v2.2.0 (2026-09-16)
+
+新增 `scripts/batch_release.py` —— 把「一批技能从本地推到线上」固化成一条命令：
+发布（固定 40 秒间隔防平台限流）+ 自动建仓推 GitHub（走 `push_via_api`，含退避重试）+ 双项校验，
+幂等可重跑。实测一次推 30 个技能：SkillHub 30/30 上线、GitHub 30/30 tree 一致。
 
 ### v2.1.0 (2026-09-16)
 
