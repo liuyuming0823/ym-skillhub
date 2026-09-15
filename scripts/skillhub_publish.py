@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ym-skillhub-publisher · 把本地技能一键创建/更新到 SkillHub（skillhub.cn）
+"""ym-skillhub · 把本地技能一键创建/更新到 SkillHub（skillhub.cn）
 
 子命令
 ------
@@ -312,10 +312,12 @@ def cmd_doctor(args):
     else:
         warn("CLI 自检返回 %s：%s" % (rc, out[:200]))
     try:
-        req = urllib.request.Request(API + "/categories", headers={"User-Agent": "ym-skillhub-publisher"})
+        req = urllib.request.Request(API + "/categories", headers={"User-Agent": "ym-skillhub"})
         with urllib.request.urlopen(req, timeout=15) as r:
             data = json.load(r)
-        n = len(data.get("categories") or data.get("data") or []) if isinstance(data, dict) else 0
+        # 接口实际结构：{"count": 13, "items": [...]}；兼容另两种字段名
+        items = data.get("items") or data.get("categories") or data.get("data") or []
+        n = len(items) if isinstance(items, list) else int(data.get("count") or 0)
         ok("平台接口连通（categories 返回 %d 项）" % n)
     except Exception as e:  # noqa: BLE001
         warn("平台接口不可达：%r（发布前需联网）" % (e,))
@@ -638,7 +640,7 @@ def cmd_publish(args):
 
 
 def _get_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "ym-skillhub-publisher", "Accept": "application/json"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ym-skillhub", "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=25) as r:
         return json.load(r)
 
@@ -673,7 +675,7 @@ def cmd_status(args):
 
     dl = ""
     try:
-        req = urllib.request.Request("%s/download?slug=%s" % (API, slug), headers={"User-Agent": "ym-skillhub-publisher"})
+        req = urllib.request.Request("%s/download?slug=%s" % (API, slug), headers={"User-Agent": "ym-skillhub"})
         with urllib.request.urlopen(req, timeout=25) as r:
             cd = r.headers.get("Content-Disposition", "")
         m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)', cd)
