@@ -9,7 +9,7 @@ description_zh: "SkillHub 技能商店的搜索、安全安装与一键发布"
 description_en: "Search, safely install, and publish skills on SkillHub"
 summary: "SkillHub 技能商店的搜索 / 安全安装 / 一键发布与线上状态复核"
 category: dev-programming
-version: 2.0.0
+version: 2.1.0
 author: 刘玉明
 tags: [skillhub, 技能商店, 搜索技能, 安装技能, 技能发布, 技能更新, 技能发版, 发布预检]
 trigger:
@@ -199,6 +199,20 @@ python $S/skillhub_publish.py release <技能目录> --changelog "..."
 12. **用搜索接口判重** —— `search?q=` 是模糊匹配，短前缀词会返回兜底热门榜，看着像无结果其实是没匹配上。
     判重用 `check_slug.py`（下载接口），但仍需在发布表单里最终确认。
 
+13. **连续发布不加间隔** —— SkillHub 有频率限制，连发到第 4 个开始报「发布频率过高」。
+    **每个之间 sleep 40 秒**（实测连发 30 个零失败，约 20 分钟跑完）。批量发布直接照这个节奏，
+    别等报错再补救式重试。失败后同样按 40 秒间隔重发可以全部追回。
+
+14. **批量建仓时 GitHub 返回 422** —— 连推十几个仓库后 `POST /git/trees` 或 `/git/commits`
+    会返回 `422 Unprocessable Entity`，这不是参数错，是**次级限流**。隔一会儿重跑同一个仓库即可，
+    通常报「tree 已一致，无需推送」。`push_via_api.py` 已内建 403/422/429/5xx 退避重试（3 次）。
+
+15. **仓库里有中文等非 ASCII 文件名** —— git 默认 `core.quotepath=true`，
+    `git ls-tree -r --name-only` 会把中文文件名（例如 `风险规则清单.md`）输出成
+    `"\351\243\216..."` 这种八进制转义串，脚本据此 `cat-file` 必然取不到对象，
+    报「HEAD 中不存在该路径」而**整仓库静默失败**。`push_via_api.py` 现已改用
+    `git -c core.quotepath=false ... -z`，中文文件名可正常推送；自建脚本也要带这两个参数。
+
 ## 给明哥的操作约定
 
 1. 搜索后先汇总候选让明哥挑，**不要擅自安装**。
@@ -224,6 +238,12 @@ python $S/skillhub_publish.py release <技能目录> --changelog "..."
   `python ~/.workbuddy/tools/push_via_api.py <仓库目录>`（**验证只看 tree sha**）。
 
 ## 版本历史
+
+### v2.1.0 (2026-09-16)
+
+批量发布实战补充：新增「常见坑」13~15（SkillHub 发布需 40 秒间隔、GitHub 批量建仓的 422
+次级限流、中文文件名被 `core.quotepath` 转义导致整仓库静默推送失败）。
+`push_via_api.py` 同步修复：`-c core.quotepath=false` + `-z` 解析路径，并内建退避重试。
 
 ### v2.0.0 (2026-09-15)
 
