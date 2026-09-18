@@ -15,7 +15,8 @@
     --gap 40                     SkillHub 发布间隔秒数
     --changelog "说明"            统一 changelog（不传则用 SKILL.md 的 summary 字段）
     --branch main                推送分支
-    --owner liuyuming0823        GitHub 账号
+    --owner <你的GitHub账号>      GitHub 账号（不传则取 gh 当前登录用户）
+    --email <提交邮箱>            git 提交邮箱（不传则用 <owner>@users.noreply.github.com）
     --skills-root <目录>         技能根目录，默认 ~/.workbuddy/skills
     --dry-run                    只打印计划
 
@@ -73,12 +74,14 @@ def publish(skill_dir: Path, changelog: str, env, tries=3) -> bool:
     return False
 
 
-def push_github(skill_dir: Path, owner: str, branch: str) -> bool:
+def push_github(skill_dir: Path, owner: str, branch: str, email: str = "") -> bool:
     name = skill_dir.name
     if not (skill_dir / ".git").exists():
         run(["git", "init", "-q"], cwd=str(skill_dir))
     run(["git", "add", "-A"], cwd=str(skill_dir))
-    run(["git", "-c", "user.name=" + owner, "-c", "user.email=xiao0823@qq.com",
+    # 提交邮箱不写死：优先 --email / 环境变量，兜底用 GitHub 官方 noreply 地址
+    email = email or os.environ.get("GIT_AUTHOR_EMAIL") or ("%s@users.noreply.github.com" % owner)
+    run(["git", "-c", "user.name=" + owner, "-c", "user.email=" + email,
          "commit", "-m", "feat: 技能更新"], cwd=str(skill_dir))
 
     rc, _ = run(["gh", "repo", "view", "%s/%s" % (owner, name)])
@@ -138,6 +141,8 @@ def main() -> int:
     ap.add_argument("--branch", default="main")
     ap.add_argument("--owner", default=None,
                     help="GitHub 账号，默认取 gh 当前登录用户")
+    ap.add_argument("--email", default="",
+                    help="git 提交邮箱，默认 <owner>@users.noreply.github.com")
     ap.add_argument("--skills-root", default=str(Path.home() / ".workbuddy" / "skills"))
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -191,7 +196,7 @@ def main() -> int:
         if a.stage in ("publish", "all"):
             good &= publish(d, a.changelog or read_summary(d) or "技能发布", env)
         if a.stage in ("github", "all"):
-            good &= push_github(d, owner, a.branch)
+            good &= push_github(d, owner, a.branch, a.email)
         if a.stage in ("publish", "all"):
             verify_skillhub(d)  # 仅供参考，未过审不算失败
         (ok if good else fail).append(d.name)
