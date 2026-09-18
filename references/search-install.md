@@ -21,8 +21,10 @@ skillhub search <关键词>
 ## 二、安装命令
 
 ```bash
-skillhub install <slug> --namespace <namespace> --dir "C:/Users/liuyuming/.workbuddy/skills"
+skillhub install <slug> --namespace <namespace> --dir "<你的技能目录，Windows 绝对路径>"
 ```
+
+例（Windows）：`--dir "%USERPROFILE%\.workbuddy\skills"` 展开后的实际路径。
 
 > ⚠️ `--dir` 必须用 **Windows 绝对路径**。传 MSYS 风格 `/c/Users/...` 时，原生 python 会把它
 > 当**相对当前盘**解析，实际装到 `D:\c\Users\...`（当前盘是 D: 时）。
@@ -74,7 +76,7 @@ skillhub skill evaluation <slug> --namespace <ns>   # 边界/触发质量评分
 WorkBuddy 只扫平铺的 `~/.workbuddy/skills/<name>/SKILL.md`。必须拍平：
 
 ```powershell
-$base   = "C:\Users\liuyuming\.workbuddy\skills"
+$base   = Join-Path $env:USERPROFILE ".workbuddy\skills"
 $nested = Join-Path $base "@<namespace>\<slug>"
 $flat   = Join-Path $base "<slug>"
 Move-Item -LiteralPath $nested -Destination $flat -Force
